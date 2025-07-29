@@ -29,7 +29,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>DBF Extraccion</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <widget class="QTabWidget" name="mainTabWidget">

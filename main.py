@@ -8,7 +8,7 @@ from datetime import datetime
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 
-from etl.etl_core import cargar_config, ejecutar_etl_con_progreso
+from etl.etl_core import cargar_config, cargar_schemas, ejecutar_etl_con_progreso
 from etl.control import obtener_ultima_fecha, actualizar_fecha
 from gui.config_dialog import ConfigDialog
 
@@ -28,6 +28,7 @@ class ETLWorker(QObject):
         self.chunk_size = chunk_size
 
     def run(self):
+
         try:
             # Ejecuta la variante con progreso
             mensaje = ejecutar_etl_con_progreso(
@@ -35,6 +36,8 @@ class ETLWorker(QObject):
                 chunk_size=self.chunk_size,
                 progress_callback=lambda p: self.progress.emit(p)
             )
+
+          
             # Actualiza metadata
             ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             actualizar_fecha(self.dbf_name, ahora)
@@ -50,7 +53,7 @@ class MainWindow(QtWidgets.QMainWindow):
         uic.loadUi(UI_PATH, self)
 
         # Carga config y pobla combos
-        cfg  = cargar_config()
+        cfg  = cargar_schemas()
         cats = [e["DBF"] for e in cfg["ENTRIES"]["CATALOGS"]]
         trs  = [e["DBF"] for e in cfg["ENTRIES"]["TRANSACTIONAL"]]
         self.cmbCatalogDbf.addItems(cats)
@@ -83,7 +86,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Fijar tamaño de la ventana
         self.setFixedSize(self.size())
 
-    # ——— CATÁLOGOS ———
+    # ——— CATALOGOS ———
     def refresh_last_sync_catalogs(self, dbf_name: str):
         fecha = obtener_ultima_fecha(dbf_name)
         self.lblCatalogLastSync_Data.setText(fecha or "Nunca")
@@ -106,7 +109,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.worker_catalogs.finished.connect(self._on_success_catalogs)
         self.worker_catalogs.error.connect(self._on_error_catalogs)
 
-        # Limpieza automática
+        # Limpieza automatica
         self.worker_catalogs.finished.connect(self.thread_catalogs.quit)
         self.worker_catalogs.finished.connect(self.worker_catalogs.deleteLater)
         self.thread_catalogs.finished.connect(self.thread_catalogs.deleteLater)
@@ -115,18 +118,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.thread_catalogs.start()
 
     def _on_success_catalogs(self, mensaje: str, dbf_name: str):
-        QtWidgets.QMessageBox.information(self, "Catálogos", mensaje)
+        QtWidgets.QMessageBox.information(self, "Catalogos", mensaje)
         self.refresh_last_sync_catalogs(dbf_name)
         self.prgCatalogSync.setValue(100)
         self.btnCatalogRun.setEnabled(True)
 
     def _on_error_catalogs(self, error_msg: str):
-        QtWidgets.QMessageBox.critical(self, "Error Catálogos", error_msg)
+        QtWidgets.QMessageBox.critical(self, "Error Catalogos", error_msg)
         self.btnCatalogRun.setEnabled(True)
 
     def open_history_catalogs(self):
         QtWidgets.QMessageBox.information(
-            self, "Historial Catálogos",
+            self, "Historial Catalogos",
             "Funcionalidad de historial no implementada aún."
         )
 
@@ -153,7 +156,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.worker_txn.finished.connect(self._on_success_transactions)
         self.worker_txn.error.connect(self._on_error_transactions)
 
-        # Limpieza automática
+        # Limpieza automatica
         self.worker_txn.finished.connect(self.thread_txn.quit)
         self.worker_txn.finished.connect(self.worker_txn.deleteLater)
         self.thread_txn.finished.connect(self.thread_txn.deleteLater)

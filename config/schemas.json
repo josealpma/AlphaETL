@@ -1,0 +1,118 @@
+{
+    "ENTRIES": {
+        "CATALOGS": [
+            {
+                "DBF": "AGENTES", 
+                "TARGET": {
+                    "TABLE": "cat_kam",
+                    "COLUMNS": [
+                        { "SOURCE": "cve_age", "TARGET": "int_cve_age" },
+                        { "SOURCE": "nom_age", "TARGET": "txt_nom_age"  }
+                    ]
+                }
+            },
+            {
+                "DBF": "CLIENTES", 
+                "TARGET": {
+                    "TABLE": "cat_clientes",
+                    "COLUMNS": [
+                        { "SOURCE": "cve_cte", "TARGET": "int_cve_cte" },
+                        { "SOURCE": "nom_cte", "TARGET": "txt_nom_cte" },
+                        { "SOURCE": "cve_can", "TARGET": "int_cve_can" },
+                        { "SOURCE": "cve_age", "TARGET": "int_cve_age"  }
+                    ]
+                }
+            }
+        ],
+        "TRANSACTIONAL": [
+            {
+                "DBF": "CREDITOS", 
+                "TARGET": {
+                    "TABLE": "tbl_creditos",
+                    "COLUMNS": [
+                        { "SOURCE": "cve_dda", "TARGET": "cve_dda" },
+                        { "SOURCE": "no_nota", "TARGET": "no_nota" },
+                        { "SOURCE": "tip_not", "TARGET": "tip_not" },
+                        { "SOURCE": "fecha", "TARGET": "fecha" },
+                        { "SOURCE": "desc_nota", "TARGET": "desc_nota" },
+                        { "SOURCE": "no_fac", "TARGET": "no_fac" },
+                        { "SOURCE": "no_cliente", "TARGET": "no_cliente" },
+                        { "SOURCE": "no_agente", "TARGET": "no_agente" },
+                        { "SOURCE": "no_estado", "TARGET": "no_estado" },
+                        { "SOURCE": "tot_imp", "TARGET": "tot_imp" },
+                        { "SOURCE": "subtotal", "TARGET": "subtotal" },
+                        { "SOURCE": "desc_not", "TARGET": "desc_not" },
+                        { "SOURCE": "tot_nota", "TARGET": "tot_nota" },
+                        { "SOURCE": "saldo", "TARGET": "saldo" },
+                        { "SOURCE": "cve_ncre", "TARGET": "cve_ncre" },
+                        { "SOURCE": "no_ped", "TARGET": "no_ped" },
+                        { "SOURCE": "suc_ped", "TARGET": "suc_ped" },
+                        { "SOURCE": "mes", "TARGET": "mes" },
+                        { "SOURCE": "año", "TARGET": "año" },
+                        { "SOURCE": "lugar", "TARGET": "lugar"  }
+                    ],
+                    "KEYS": ["id_credito"],
+                    "HASHES": ["no_fac", "no_ped", "cve_cte", "cve_age", "status_fac", "subt_fac", "saldo_fac"]
+                }
+            },
+            {
+                "DBF": "FACTURAC", 
+                "TARGET": {
+                    "TABLE": "tbl_facturas",
+                    "COLUMNS": [
+                        { "SOURCE": "no_fac", "TARGET": "no_fac" },
+                        { "SOURCE": "no_ped", "TARGET": "no_ped" },
+                        { "SOURCE": "cve_cte", "TARGET": "cve_cte" },
+                        { "SOURCE": "cve_age", "TARGET": "cve_age" },
+                        { "SOURCE": "falta_fac", "TARGET": "falta_fac" },
+                        { "SOURCE": "status_fac", "TARGET": "status_fac" },
+                        { "SOURCE": "subt_fac", "TARGET": "subt_fac" },
+                        { "SOURCE": "descuento", "TARGET": "descuento" },
+                        { "SOURCE": "total_fac", "TARGET": "total_fac" },
+                        { "SOURCE": "saldo_fac", "TARGET": "saldo_fac" },
+                        { "SOURCE": "f_pago", "TARGET": "f_pago" },
+                        { "SOURCE": "observa", "TARGET": "observa" },
+                        { "SOURCE": "lugar", "TARGET": "lugar" },
+                        { "SOURCE": "cve_factu", "TARGET": "cve_factu" },
+                        { "SOURCE": "cve_mon", "TARGET": "cve_mon" },
+                        { "SOURCE": "cve_suc", "TARGET": "cve_suc" },
+                        { "SOURCE": "mes", "TARGET": "mes" },
+                        { "SOURCE": "año", "TARGET": "año" },
+                        { "SOURCE": "hora_fac", "TARGET": "hora_fac" },
+                        { "SOURCE": "ped_int", "TARGET": "ped_int"  }
+                    ],
+                    "KEYS": ["id_factura"],
+                    "HASHES": ["no_fac", "no_ped", "cve_cte", "cve_age", "status_fac", "subt_fac", "saldo_fac"]
+                }
+            },
+            {
+                "DBF": "FACTURAD", 
+                "TARGET": {
+                    "TABLE": "tbl_facturas_det",
+                    "COLUMNS": [
+                        { "SOURCE": "no_fac", "TARGET": "no_fac" },
+                        { "SOURCE": "no_ped", "TARGET": "no_ped" },
+                        { "SOURCE": "cse_prod", "TARGET": "cse_prod" },
+                        { "SOURCE": "cve_prod", "TARGET": "cve_prod" },
+                        { "SOURCE": "cant_prod", "TARGET": "cant_prod" },
+                        { "SOURCE": "valor_prod", "TARGET": "valor_prod" },
+                        { "SOURCE": "cant_surt", "TARGET": "cant_surt" },
+                        { "SOURCE": "cost_prom", "TARGET": "cost_prom" },
+                        { "SOURCE": "descu_prod", "TARGET": "descu_prod" },
+                        { "SOURCE": "subt_prod", "TARGET": "subt_prod" },
+                        { "SOURCE": "iva_prod", "TARGET": "iva_prod" },
+                        { "SOURCE": "cve_factu", "TARGET": "cve_factu" },
+                        { "SOURCE": "factor", "TARGET": "factor" },
+                        { "SOURCE": "unidad", "TARGET": "unidad" },
+                        { "SOURCE": "cve_suc", "TARGET": "cve_suc" },
+                        { "SOURCE": "lote", "TARGET": "lote" },
+                        { "SOURCE": "part_fac", "TARGET": "part_fac" },
+                        { "SOURCE": "numpedrem", "TARGET": "numpedrem"  }
+                    ],
+                    "KEYS": ["id_factura_det"],
+                    "HASHES": ["no_fac", "no_ped", "cse_prod", "cant_prod", "valor_prod", "cant_surt", "cve_factu", "part_fac"]
+                }
+            }
+        ]
+    }
+}
