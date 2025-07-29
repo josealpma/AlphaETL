@@ -15,6 +15,22 @@
                 
             },
             {
+                "DBF": "PRODUCTO", 
+                "TARGET": {
+                    "TABLE": "cat_productos",
+                    "COLUMNS": [
+                        { "SOURCE": "dato_1", "TARGET": "txt_cod_barras" },
+                        { "SOURCE": "desc_prod", "TARGET": "txt_des_pro" },
+                        { "SOURCE": "cse_prod", "TARGET": "txt_cse_pro" },
+                        { "SOURCE": "cve_prod", "TARGET": "txt_cve_pro" }
+
+                    ]
+                },
+                "KEYS": ["txt_cve_pro"],
+                "HASHES": []
+                
+            },
+            {
                 "DBF": "CLIENTES", 
                 "TARGET": {
                     "TABLE": "cat_clientes",

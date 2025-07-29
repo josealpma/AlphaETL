@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>385</width>
-    <height>237</height>
+    <height>250</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -19,14 +19,19 @@
   <property name="minimumSize">
    <size>
     <width>385</width>
-    <height>237</height>
+    <height>250</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>385</width>
-    <height>237</height>
+    <height>250</height>
    </size>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>9</pointsize>
+   </font>
   </property>
   <property name="windowTitle">
    <string>DBF Extraccion</string>
@@ -53,7 +58,7 @@
        <rect>
         <x>8</x>
         <y>150</y>
-        <width>93</width>
+        <width>111</width>
         <height>28</height>
        </rect>
       </property>
@@ -134,7 +139,7 @@
        <rect>
         <x>10</x>
         <y>80</y>
-        <width>131</width>
+        <width>191</width>
         <height>16</height>
        </rect>
       </property>
@@ -181,7 +186,7 @@
        <rect>
         <x>8</x>
         <y>150</y>
-        <width>93</width>
+        <width>111</width>
         <height>28</height>
        </rect>
       </property>
@@ -256,7 +261,7 @@
        <rect>
         <x>10</x>
         <y>80</y>
-        <width>131</width>
+        <width>191</width>
         <height>16</height>
        </rect>
       </property>

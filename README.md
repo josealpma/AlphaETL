@@ -1,6 +1,6 @@
 # Visión general del proyecto
 
-Este proyecto automatiza la sincronización de datos desde archivos DBF (procedentes de sistemas heredados) hacia una base de datos MySQL. Su corazón es el módulo **`etl_core.py`**, que garantiza que solo se transfieran las filas nuevas o modificadas, ahorrando tiempo y evitando cargas completas innecesarias.
+Este proyecto facilita la sincronización de datos desde archivos DBF (procedentes de sistemas heredados) hacia una base de datos MySQL. Su corazón es el módulo **`etl_core.py`**, que garantiza que solo se transfieran las filas nuevas o modificadas, ahorrando tiempo y evitando cargas completas innecesarias.
 
 ## Estructura del repositorio
 

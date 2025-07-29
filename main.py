@@ -12,6 +12,8 @@ from etl.etl_core import cargar_config, cargar_schemas, ejecutar_etl_con_progres
 from etl.control   import obtener_ultima_fecha, actualizar_fecha
 from gui.config_dialog import ConfigDialog
 
+from gui.history_dialog import HistoryDialog
+
 if getattr(sys, "frozen", False):
     BASE_DIR = sys._MEIPASS
 else:
@@ -71,8 +73,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self.prgCatalogSync.setValue(0)
         self.prgTxnSync.setValue(0)
 
+        # Conectar el nuevo botón de historial
+        self.btnCatalogHistory.clicked.connect(self.show_catalog_history)
+        self.btnTxnHistory.clicked.connect(self.show_transactional_history)
+
         # lock window size
         self.setFixedSize(self.size())
+
+    def show_catalog_history(self):
+        dbf = self.cmbCatalogDbf.currentText()
+        cfg = cargar_config()
+        dlg = HistoryDialog(cfg["MYSQL_URI"], dbf, parent=self)
+        dlg.exec_()
+
+    def show_transactional_history(self):
+        dbf = self.cmbTxnDbf.currentText()
+        cfg = cargar_config()
+        dlg = HistoryDialog(cfg["MYSQL_URI"], dbf, parent=self)
+        dlg.exec_()
 
     def refresh_last_sync_catalogs(self, dbf_name: str):
         fecha = obtener_ultima_fecha(dbf_name)
