@@ -1,6 +1,6 @@
 {
-    "DBF_DIR": "C:/Alpha/DBF",
-    "CHUNK_SIZE": 1000,
+    "DBF_DIR": "C:\\Alpha\\DBF_20250702",
+    "CHUNK_SIZE": 10000,
     "MYSQL": {
         "HOST": "localhost",
         "PORT": 3306,

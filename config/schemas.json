@@ -9,7 +9,10 @@
                         { "SOURCE": "cve_age", "TARGET": "int_cve_age" },
                         { "SOURCE": "nom_age", "TARGET": "txt_nom_age"  }
                     ]
-                }
+                },
+                "KEYS": ["int_cve_age"],
+                "HASHES": []
+                
             },
             {
                 "DBF": "CLIENTES", 
@@ -21,7 +24,9 @@
                         { "SOURCE": "cve_can", "TARGET": "int_cve_can" },
                         { "SOURCE": "cve_age", "TARGET": "int_cve_age"  }
                     ]
-                }
+                },
+                "KEYS": ["int_cve_cte"],
+                "HASHES": []
             }
         ],
         "TRANSACTIONAL": [
@@ -51,8 +56,8 @@
                         { "SOURCE": "año", "TARGET": "año" },
                         { "SOURCE": "lugar", "TARGET": "lugar"  }
                     ],
-                    "KEYS": ["id_credito"],
-                    "HASHES": ["no_fac", "no_ped", "cve_cte", "cve_age", "status_fac", "subt_fac", "saldo_fac"]
+                    "KEYS": ["cve_dda", "no_nota", "no_cliente", "no_fac"],
+                    "HASHES": ["cve_dda", "no_nota", "tip_not", "fecha", "no_cliente", "no_agente", "no_estado", "mes"]
                 }
             },
             {
@@ -81,8 +86,8 @@
                         { "SOURCE": "hora_fac", "TARGET": "hora_fac" },
                         { "SOURCE": "ped_int", "TARGET": "ped_int"  }
                     ],
-                    "KEYS": ["id_factura"],
-                    "HASHES": ["no_fac", "no_ped", "cve_cte", "cve_age", "status_fac", "subt_fac", "saldo_fac"]
+                    "KEYS": ["no_fac","cve_cte","cve_age"],
+                    "HASHES": [ "no_fac","cve_cte","cve_age", "status_fac","subt_fac","descuento", "total_fac","saldo_fac","mes","año","hora_fac"]
                 }
             },
             {
@@ -109,8 +114,8 @@
                         { "SOURCE": "part_fac", "TARGET": "part_fac" },
                         { "SOURCE": "numpedrem", "TARGET": "numpedrem"  }
                     ],
-                    "KEYS": ["id_factura_det"],
-                    "HASHES": ["no_fac", "no_ped", "cse_prod", "cant_prod", "valor_prod", "cant_surt", "cve_factu", "part_fac"]
+                    "KEYS": ["no_fac", "cse_prod", "part_fac"],
+                    "HASHES": ["no_fac", "cse_prod", "cve_prod", "cant_surt", "part_fac"]
                 }
             }
         ]

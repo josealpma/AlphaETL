@@ -1,40 +1,51 @@
-# etl/etl_core.py
-
-import os
-import json
+# en etl/etl_core.py
+import os, sys, json
 import logging
 import hashlib
+import time
 from datetime import datetime
-from typing import Callable
+from typing import Callable, List, Tuple
 
+import psutil
 import pandas as pd
 from dbfread import DBF
-from sqlalchemy import create_engine, MetaData, Table, select
+from sqlalchemy import create_engine, MetaData, Table, select, text
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 
 from etl.control import actualizar_fecha
 
-import psutil, time
-
-# Rutas de configuración
-CONFIG_PATH = "config/config.json"
-SCHEMA_PATH = "config/schemas.json"
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+if getattr(sys, "frozen", False):
+    BASE_DIR = sys._MEIPASS
+else:
+    # sys.argv[0] apunta al script principal (main.py)
+    BASE_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+
+CONFIG_PATH = os.path.join(BASE_DIR, "config", "config.json")
+SCHEMA_PATH = os.path.join(BASE_DIR, "config", "schemas.json")
+
 def cargar_config() -> dict:
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    with open(CONFIG_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 def cargar_schemas() -> dict:
-    with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
+    with open(SCHEMA_PATH, encoding="utf-8") as f:
         return json.load(f)
 
-def calcular_hash_fila(row: dict, cols: list) -> str:
-    s = "|".join(str(row.get(c, "")) for c in cols)
+def calcular_hash_fila(row: dict, cols: List[str]) -> str:
+    def norm(v):
+        if v is None:
+            return ""
+        if isinstance(v, float):
+            return str(int(v)) if v.is_integer() else str(v)
+        return str(v).strip()
+    parts = [norm(row.get(c)) for c in cols]
+    s = "|".join(parts)
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
-def dbf_to_dataframe(dbf_path: str, columns: list = None) -> pd.DataFrame:
+
+def dbf_to_dataframe(dbf_path: str, columns: List[str] = None) -> pd.DataFrame:
     logging.info(f"Leyendo DBF: {dbf_path}")
     table = DBF(dbf_path, load=True, ignore_missing_memofile=True, char_decode_errors="ignore")
     df = pd.DataFrame(iter(table))
@@ -43,43 +54,66 @@ def dbf_to_dataframe(dbf_path: str, columns: list = None) -> pd.DataFrame:
         sel = [lower[c.lower()] for c in columns if c.lower() in lower]
         missing = [c for c in columns if c.lower() not in lower]
         if missing:
-            logging.warning(f"Columnas no encontradas en {os.path.basename(dbf_path)}: {missing}")
-        df = df.loc[:, sel]
+            logging.warning(f"Columnas no encontradas y excluidas: {missing}")
+        df = df[sel]
     return df
+
 
 def filter_new_or_changed(
     df: pd.DataFrame,
     engine,
     table_name: str,
-    key_field: str,
+    key_cols: List[str],
     hash_field: str,
-    hash_cols: list
+    hash_cols: List[str]
 ) -> pd.DataFrame:
-    # 1) calculamos hash
-    records = df.to_dict("records")
-    df[hash_field] = [calcular_hash_fila(r, hash_cols) for r in records]
+    """
+    1) Calcula row_hash en Python.
+    2) Elimina duplicados internos según key_cols.
+    3) Carga TODO el mapping key->row_hash de MySQL.
+    4) Filtra en Python solo las filas cuyo hash no coincida o no exista.
+    """
+    # 1) calcular SHA256
+    df[hash_field] = [calcular_hash_fila(r, hash_cols) for r in df.to_dict("records")]
 
-    # 2) traemos hashes existentes
-    metadata = MetaData()
-    tbl = Table(table_name, metadata, autoload_with=engine)
-    stmt = select(tbl.c[key_field], tbl.c[hash_field])\
-           .where(tbl.c[key_field].in_(df[key_field].tolist()))
+    # 2) dedupe interno
+    df = df.drop_duplicates(subset=key_cols, keep="first")
 
+    # 3) traer todo existing mapping
+    meta = MetaData()
+    tbl = Table(table_name, meta, autoload_with=engine)
+    cols = [tbl.c[k] for k in key_cols] + [tbl.c[hash_field]]
+    stmt = select(*cols)
     with engine.connect() as conn:
-        existing = dict(conn.execute(stmt).fetchall())
+        rows = conn.execute(stmt).mappings().all()
 
-    # 3) filtramos
-    mask = df.apply(lambda r: existing.get(r[key_field]) != r[hash_field], axis=1)
-    return df.loc[mask]
+    existing: dict[Tuple, str] = {
+        tuple(row[k] for k in key_cols): row[hash_field]
+        for row in rows
+    }
+
+    # 4) filtrar
+    def is_changed(r):
+        key = tuple(r[k] for k in key_cols)
+        return existing.get(key) != r[hash_field]
+
+    mask = df.apply(is_changed, axis=1)
+    return df.loc[mask].copy()
+
 
 def upsert_dataframe_con_progreso(
     df: pd.DataFrame,
     mysql_uri: str,
     table_name: str,
-    key_columns: list,
+    key_cols: List[str],
+    hash_field: str,
     chunk_size: int,
     progress_callback: Callable[[int], None]
 ):
+    """
+    Upsert por lotes con ON DUPLICATE KEY UPDATE.
+    Asegura que row_hash se refresque en cada UPDATE.
+    """
     engine = create_engine(mysql_uri, connect_args={"charset": "utf8mb4"})
     meta = MetaData()
     tbl = Table(table_name, meta, autoload_with=engine)
@@ -96,66 +130,93 @@ def upsert_dataframe_con_progreso(
         upd = {
             c.name: stmt.inserted[c.name]
             for c in tbl.columns
-            if c.name not in key_columns and c.name in df.columns
+            if c.name not in key_cols and c.name in df.columns
         }
+        # forzamos update de row_hash
+        if hash_field in df.columns:
+            upd[hash_field] = stmt.inserted[hash_field]
+
         stmt = stmt.on_duplicate_key_update(**upd)
         with engine.begin() as conn:
             conn.execute(stmt, chunk)
+        progress_callback(int(((i + len(chunk)) / total) * 100))
 
-        pct = int(((i + len(chunk)) / total) * 100)
-        progress_callback(pct)
+
+def log_sync_history(
+    mysql_uri: str,
+    dbf_name: str,
+    sync_time: datetime,
+    rows_processed: int,
+    rows_synced: int,
+    mem_used_mb: float
+):
+    engine = create_engine(mysql_uri, connect_args={"charset": "utf8mb4"})
+    stmt = text("""
+      INSERT INTO etl_sync_log
+        (dbf_name, sync_time, rows_processed, rows_inserted, mem_used_mb)
+      VALUES (:dbf, :ts, :rp, :rs, :mem)
+    """)
+    with engine.begin() as conn:
+        conn.execute(stmt, {
+            "dbf": dbf_name,
+            "ts": sync_time,
+            "rp": rows_processed,
+            "rs": rows_synced,
+            "mem": mem_used_mb
+        })
+
 
 def ejecutar_etl_con_progreso(
     dbf_name: str,
     chunk_size: int,
     progress_callback: Callable[[int], None]
 ) -> str:
+    start = time.time()
     cfg = cargar_config()
     schemas = cargar_schemas()
-    entries = schemas["ENTRIES"]["CATALOGS"] + schemas["ENTRIES"]["TRANSACTIONAL"]
-    entry = next(e for e in entries if e["DBF"].lower() == dbf_name.lower())
+    entry = next(
+        e for e in schemas["ENTRIES"]["CATALOGS"] + schemas["ENTRIES"]["TRANSACTIONAL"]
+        if e["DBF"].lower() == dbf_name.lower()
+    )
 
-    # 1) lee DBF (solo columnas SOURCE)
-    src_cols = [m["SOURCE"] for m in entry["TARGET"]["COLUMNS"]]
-    dbf_path = os.path.join(cfg["DBF_DIR"], f"{entry['DBF']}.DBF")
-    df = dbf_to_dataframe(dbf_path, src_cols)
+    engine = create_engine(cfg["MYSQL_URI"], connect_args={"charset": "utf8mb4"})
+    key_cols = entry["TARGET"]["HASHES"]
+    hash_field = "row_hash"
+    hash_cols = key_cols
+
+    # 1) leer DBF
+    src = [c["SOURCE"] for c in entry["TARGET"]["COLUMNS"]]
+    df = dbf_to_dataframe(os.path.join(cfg["DBF_DIR"], f"{dbf_name}.DBF"), src)
+    rows_processed = len(df)
 
     # 2) rename SOURCE→TARGET
     lower = {c.lower(): c for c in df.columns}
     rename = {
-        lower[m["SOURCE"].lower()]: m["TARGET"]
-        for m in entry["TARGET"]["COLUMNS"]
-        if m["SOURCE"].lower() in lower
+        lower[c["SOURCE"].lower()]: c["TARGET"]
+        for c in entry["TARGET"]["COLUMNS"]
+        if c["SOURCE"].lower() in lower
     }
     df = df.rename(columns=rename)
 
-    # 3) determinamos columnas de hash y llave
-    hash_cols = entry["TARGET"].get("HASHES", [])
-    # si no hay KEYS definido, usamos la primera de HASHES como key_field
-    key_columns = entry.get("KEYS") or [hash_cols[0]]
-    key_field = key_columns[0]
+    # 3) filtrar nuevos o cambiados
+    df_to_sync = filter_new_or_changed(df, engine,
+                                       entry["TARGET"]["TABLE"],
+                                       key_cols, hash_field, hash_cols)
+    rows_synced = len(df_to_sync)
 
-    # 4) filtrado incremental por hash
-    engine = create_engine(cfg["MYSQL_URI"], connect_args={"charset": "utf8mb4"})
-    df_proc = filter_new_or_changed(
-        df, engine,
-        entry["TARGET"]["TABLE"],
-        key_field,
-        "row_hash",
-        hash_cols
-    )
+    # 4) upsert
+    upsert_dataframe_con_progreso(df_to_sync, cfg["MYSQL_URI"],
+                                  entry["TARGET"]["TABLE"],
+                                  key_cols, hash_field,
+                                  chunk_size, progress_callback)
 
-    # 5) upsert con progreso
-    upsert_dataframe_con_progreso(
-        df_proc,
-        cfg["MYSQL_URI"],
-        entry["TARGET"]["TABLE"],
-        key_columns,
-        chunk_size,
-        progress_callback
-    )
+    # 5) log & fecha
+    proc = psutil.Process()
+    mem = proc.memory_info().rss / (1024 ** 2)
+    now = datetime.now()
+    log_sync_history(cfg["MYSQL_URI"], dbf_name, now,
+                     rows_processed, rows_synced, mem)
+    actualizar_fecha(dbf_name, now.isoformat(sep=" ", timespec="seconds"))
 
-    # 6) actualiza fecha de última sync
-    actualizar_fecha(dbf_name, datetime.now().isoformat(sep=" ", timespec="seconds"))
-
-    return f"{len(df_proc)} filas nuevas o modificadas sincronizadas en '{entry['TARGET']['TABLE']}'."
+    return (f"Procesadas: {rows_processed}, "
+            f"memoria: {mem:.2f} MB, duracion.: {time.time()-start:.2f}s.")
