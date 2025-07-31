@@ -1,20 +1,20 @@
 {
     "AGENTES": {
-        "ultima_fecha": "2025-07-29 13:09:19"
+        "ultima_fecha": "2025-07-30 11:50:26"
     },
     "CLIENTES": {
         "ultima_fecha": "2025-07-29 13:09:23"
     },
     "FACTURAC": {
-        "ultima_fecha": "2025-07-29 13:12:38"
+        "ultima_fecha": "2025-07-30 11:50:46"
     },
     "CREDITOS": {
         "ultima_fecha": "2025-07-29 18:03:07"
     },
     "FACTURAD": {
-        "ultima_fecha": "2025-07-29 13:10:47"
+        "ultima_fecha": "2025-07-30 11:51:46"
     },
     "PRODUCTO": {
-        "ultima_fecha": "2025-07-29 13:03:03"
+        "ultima_fecha": "2025-07-30 11:50:31"
     }
 }
