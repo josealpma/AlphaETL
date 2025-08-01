@@ -38,7 +38,7 @@ class HistoryDialog(QDialog):
               time_elapsed   AS Duración_s,
               chunk_size     AS Chunk,
               mem_used_mb    AS Memoria_MB
-            FROM etl_sync_log
+            FROM tbl_sync_log
             WHERE dbf_name = :dbf
             ORDER BY sync_time DESC
         """)

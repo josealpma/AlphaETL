@@ -142,7 +142,7 @@ def log_sync_history(
 ):
     engine = create_engine(mysql_uri, connect_args={"charset": "utf8mb4"})
     stmt = text("""
-      INSERT INTO etl_sync_log
+      INSERT INTO tbl_sync_log
         (dbf_name, sync_time, rows_processed, rows_inserted,
          time_elapsed, chunk_size, mem_used_mb)
       VALUES (:dbf, :ts, :rp, :ri, :te, :cs, :mem)

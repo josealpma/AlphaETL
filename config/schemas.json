@@ -47,7 +47,7 @@
         ],
         "TRANSACTIONAL": [
             {
-                "DBF": "CREDITOS", 
+                "DBF": "CREDITOS",
                 "TARGET": {
                     "TABLE": "tbl_creditos",
                     "COLUMNS": [
@@ -73,7 +73,7 @@
                         { "SOURCE": "lugar", "TARGET": "lugar"  }
                     ],
                     "KEYS": ["cve_dda", "no_nota", "no_cliente", "no_fac"],
-                    "HASHES": ["cve_dda", "no_nota", "tip_not", "fecha", "no_cliente", "no_agente", "no_estado", "mes"]
+                    "HASHES": ["cve_dda", "no_nota", "tip_not", "fecha", "no_cliente", "no_agente", "no_estado", "mes", "saldo"]
                 }
             },
             {

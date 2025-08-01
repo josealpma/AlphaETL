@@ -18,6 +18,10 @@
   <property name="windowTitle">
    <string>Configuracion</string>
   </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>../res/icon.png</normaloff>../res/icon.png</iconset>
+  </property>
   <widget class="QDialogButtonBox" name="buttonGroup">
    <property name="geometry">
     <rect>

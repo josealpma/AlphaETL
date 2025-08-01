@@ -73,7 +73,7 @@ Este proyecto facilita la sincronización de datos desde archivos DBF (procedent
 7. **Upsert**:  
    - Inserta nuevas y actualiza modificadas con `ON DUPLICATE KEY UPDATE`.  
    - Incluye la actualización de `row_hash` para no volver a marcarlas en la siguiente ejecución.  
-8. **Registro de log**: almacena en `etl_sync_log` cuántas filas se procesaron, sincronizaron y cuánta memoria se consumió.  
+8. **Registro de log**: almacena en `tbl_sync_log` cuántas filas se procesaron, sincronizaron y cuánta memoria se consumió.  
 9. **Actualización de fecha**: guarda la marca de tiempo de la última sincronización.
 
 ## Beneficios
