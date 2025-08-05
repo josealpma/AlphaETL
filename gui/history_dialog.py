@@ -34,7 +34,7 @@ class HistoryDialog(QDialog):
             SELECT
               sync_time    AS Fecha,
               rows_processed AS Procesadas,
-              rows_inserted  AS Conciliaciones,
+              rows_upserted  AS Conciliaciones,
               time_elapsed   AS Duración_s,
               chunk_size     AS Chunk,
               mem_used_mb    AS Memoria_MB

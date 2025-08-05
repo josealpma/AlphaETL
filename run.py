@@ -1,244 +1,178 @@
-import os
-import sys
+import argparse
 import json
 import logging
-import hashlib
-import time
+import os
+import sys
 from datetime import datetime
-from typing import Callable, List, Tuple
 
-import psutil
-import pandas as pd
-from dbfread import DBF
-from sqlalchemy import create_engine, MetaData, Table, select, text
-from sqlalchemy.dialects.mysql import insert as mysql_insert
+# ==== RUTAS BASE ====
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
 
-from etl.control import actualizar_fecha
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
-# Base dir para PyInstaller o desarrollo
-if getattr(sys, "frozen", False):
-    BASE_DIR = sys._MEIPASS
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+# Importa tu core real
+try:
+    from etl.etl_core import ejecutar_etl_con_progreso  # (dbf_name, chunk_size, progress_callback)
+except Exception as ex:
+    print("[FATAL] No se pudo importar etl.etl_core.ejecutar_etl_con_progreso:", repr(ex))
+    sys.exit(90)
 
 CONFIG_PATH = os.path.join(BASE_DIR, "config", "config.json")
 SCHEMA_PATH = os.path.join(BASE_DIR, "config", "schemas.json")
+LOG_DIR     = os.path.join(BASE_DIR, "logs")
 
 
-def cargar_config() -> dict:
-    with open(CONFIG_PATH, encoding="utf-8") as f:
-        return json.load(f)
+# ==== UTILIDADES ====
+def cargar_json(path: str) -> dict:
+    if not os.path.exists(path):
+        print(f"[FATAL] No existe el archivo requerido: {path}")
+        sys.exit(91)
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as ex:
+        print(f"[FATAL] Error al leer JSON {path}: {ex!r}")
+        sys.exit(92)
 
 
-def cargar_schemas() -> dict:
-    with open(SCHEMA_PATH, encoding="utf-8") as f:
-        return json.load(f)
+def configurar_logger(nombre_entry: str, log_path: str | None = None) -> str:
+    """
+    Crea logger de archivo + consola.
+    logs/<ENTRY>/etl_<ENTRY>_<YYYYMMDD>_<HHMM>.log
+    """
+    nombre_entry = nombre_entry.upper()
 
+    # Asegura carpetas
+    os.makedirs(LOG_DIR, exist_ok=True)
 
-def calcular_hash_fila(row: dict, cols: List[str]) -> str:
-    def norm(v):
-        if v is None:
-            return ""
-        if isinstance(v, float):
-            return str(int(v)) if v.is_integer() else str(v)
-        return str(v).strip()
-    parts = [norm(row.get(c)) for c in cols if c in row]
-    s = "|".join(parts)
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
-
-
-def dbf_to_dataframe(dbf_path: str, columns: List[str] = None) -> pd.DataFrame:
-    logging.info(f"Leyendo DBF: {dbf_path}")
-    table = DBF(dbf_path, load=True, ignore_missing_memofile=True, char_decode_errors="ignore")
-    df = pd.DataFrame(iter(table))
-    if columns:
-        lower = {c.lower(): c for c in df.columns}
-        sel   = [lower[c.lower()] for c in columns if c.lower() in lower]
-        missing = [c for c in columns if c.lower() not in lower]
-        if missing:
-            logging.warning(f"Columnas no encontradas y excluidas: {missing}")
-        df = df[sel]
-    return df
-
-
-def filter_new_or_changed(
-    df: pd.DataFrame,
-    engine,
-    table_name: str,
-    key_cols: List[str],
-    hash_field: str,
-    hash_cols: List[str]
-) -> pd.DataFrame:
-    # 1) Calcular row_hash
-    df[hash_field] = [calcular_hash_fila(r, hash_cols) for r in df.to_dict("records")]
-
-    # 2) Dedupe interno por key_cols
-    df = df.drop_duplicates(subset=key_cols, keep="first")
-
-    # 3) Cargar mapping completo key->hash de MySQL
-    meta = MetaData()
-    tbl  = Table(table_name, meta, autoload_with=engine)
-    cols = [tbl.c[k] for k in key_cols] + [tbl.c[hash_field]]
-    stmt = select(*cols)
-    with engine.connect() as conn:
-        rows = conn.execute(stmt).mappings().all()
-    existing = {
-        tuple(row[k] for k in key_cols): row[hash_field]
-        for row in rows
-    }
-
-    # 4) Filtrar en memoria
-    mask = df.apply(lambda r: existing.get(tuple(r[k] for k in key_cols)) != r[hash_field], axis=1)
-    return df.loc[mask].copy()
-
-
-def upsert_dataframe_con_progreso(
-    df: pd.DataFrame,
-    mysql_uri: str,
-    table_name: str,
-    key_cols: List[str],
-    hash_field: str,
-    chunk_size: int,
-    progress_callback: Callable[[int], None]
-):
-    engine = create_engine(mysql_uri, connect_args={"charset": "utf8mb4"})
-    meta   = MetaData()
-    tbl    = Table(table_name, meta, autoload_with=engine)
-
-    recs  = df.to_dict("records")
-    total = len(recs)
-    if total == 0:
-        progress_callback(100)
-        return
-
-    for i in range(0, total, chunk_size):
-        chunk = recs[i : i + chunk_size]
-        stmt  = mysql_insert(tbl)
-        upd   = {
-            c.name: stmt.inserted[c.name]
-            for c in tbl.columns
-            if c.name not in key_cols and c.name in df.columns
-        }
-        if hash_field in df.columns:
-            upd[hash_field] = stmt.inserted[hash_field]
-
-        stmt = stmt.on_duplicate_key_update(**upd)
-        with engine.begin() as conn:
-            conn.execute(stmt, chunk)
-        progress_callback(int(((i + len(chunk)) / total) * 100))
-
-
-def log_sync_history(
-    mysql_uri: str,
-    dbf_name: str,
-    sync_time: datetime,
-    rows_processed: int,
-    rows_inserted: int,
-    time_elapsed: int,
-    chunk_size: int,
-    mem_used_mb: float
-):
-    engine = create_engine(mysql_uri, connect_args={"charset": "utf8mb4"})
-    stmt = text("""
-      INSERT INTO tbl_sync_log
-        (dbf_name, sync_time, rows_processed, rows_inserted,
-         time_elapsed, chunk_size, mem_used_mb)
-      VALUES (:dbf, :ts, :rp, :ri, :te, :cs, :mem)
-    """)
-    with engine.begin() as conn:
-        conn.execute(stmt, {
-            "dbf": dbf_name,
-            "ts":  sync_time,
-            "rp":  rows_processed,
-            "ri":  rows_inserted,
-            "te":  time_elapsed,
-            "cs":  chunk_size,
-            "mem": mem_used_mb
-        })
-
-
-def ejecutar_etl_con_progreso(
-    dbf_name: str,
-    chunk_size: int,
-    progress_callback: Callable[[int], None]
-) -> str:
-    start_time = time.time()
-
-    cfg     = cargar_config()
-    schemas = cargar_schemas()
-    cats    = schemas["ENTRIES"]["CATALOGS"]
-    txns    = schemas["ENTRIES"]["TRANSACTIONAL"]
-
-    is_txn = any(e["DBF"].lower() == dbf_name.lower() for e in txns)
-    entries = txns if is_txn else cats
-    entry   = next(e for e in entries if e["DBF"].lower() == dbf_name.lower())
-
-    # Determinar las KEYS: para transaccional viene dentro de TARGET, para catálogos en el nivel superior
-    if is_txn:
-        key_cols = entry["TARGET"]["KEYS"]
+    if not log_path:
+        ts = datetime.now().strftime("%Y%m%d_%H%M")
+        entry_dir = os.path.join(LOG_DIR, nombre_entry)
+        os.makedirs(entry_dir, exist_ok=True)
+        log_path = os.path.join(entry_dir, f"etl_{nombre_entry}_{ts}.log")
     else:
-        key_cols = entry.get("KEYS", [])
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
-    engine     = create_engine(cfg["MYSQL_URI"], connect_args={"charset":"utf8mb4"})
-    src_cols   = [c["SOURCE"] for c in entry["TARGET"]["COLUMNS"]]
-    df         = dbf_to_dataframe(os.path.join(cfg["DBF_DIR"], f"{dbf_name}.DBF"), src_cols)
-    rows_processed = len(df)
+    # reset handlers
+    for h in logging.root.handlers[:]:
+        logging.root.removeHandler(h)
 
-    lower = {c.lower(): c for c in df.columns}
-    rename_map = {
-        lower[c["SOURCE"].lower()]: c["TARGET"]
-        for c in entry["TARGET"]["COLUMNS"]
-        if c["SOURCE"].lower() in lower
-    }
-    df = df.rename(columns=rename_map)
+    logging.basicConfig(
+        filename=log_path,
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s"
+    )
+    # espejo a consola
+    console = logging.StreamHandler(sys.stdout)
+    console.setLevel(logging.INFO)
+    console.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logging.getLogger().addHandler(console)
 
-    if is_txn:
-        hash_field = "row_hash"
-        hash_cols  = entry["TARGET"]["HASHES"]
-        df_to_sync = filter_new_or_changed(
-            df, engine,
-            entry["TARGET"]["TABLE"],
-            key_cols,
-            hash_field,
-            hash_cols
+    print(f"[RUN] Logger inicializado -> {log_path}")
+    logging.info(f"Logger inicializado: {log_path}")
+    return log_path
+
+
+def resolver_entry(nombre_entry: str, schemas: dict) -> tuple[dict, bool]:
+    """
+    Retorna (entry, is_txn)
+    - Valida estructura schemas.
+    - Lista entries disponibles para diagnostico.
+    """
+    if "ENTRIES" not in schemas or not isinstance(schemas["ENTRIES"], dict):
+        print("[FATAL] schemas.json no tiene la seccion 'ENTRIES' válida.")
+        sys.exit(93)
+
+    entries = schemas["ENTRIES"]
+    cats = entries.get("CATALOGS", [])
+    txns = entries.get("TRANSACTIONAL", [])
+
+    if not isinstance(cats, list) or not isinstance(txns, list):
+        print("[FATAL] 'CATALOGS' o 'TRANSACTIONAL' no son listas en schemas.json.")
+        sys.exit(94)
+
+    disponibles_cats = [e.get("DBF", "") for e in cats]
+    disponibles_txns = [e.get("DBF", "") for e in txns]
+
+    print(f"[DEBUG] CATALOGS disponibles: {disponibles_cats}")
+    print(f"[DEBUG] TRANSACTIONAL disponibles: {disponibles_txns}")
+
+    nombre_entry_up = nombre_entry.upper()
+    entry = next((e for e in cats if e.get("DBF", "").upper() == nombre_entry_up), None)
+    if entry:
+        return entry, False
+
+    entry = next((e for e in txns if e.get("DBF", "").upper() == nombre_entry_up), None)
+    if entry:
+        return entry, True
+
+    print(f"[ERROR] No se encontro DBF='{nombre_entry_up}' en CATALOGS ni TRANSACTIONAL.")
+    sys.exit(95)
+
+
+# ==== MAIN CLI ====
+def main():
+    parser = argparse.ArgumentParser(description="Runner CLI para AlphaETL (ejecucion por DBF/ENTRY).")
+    parser.add_argument("-e", "--entry", required=True, help="DBF a procesar (coincide con 'DBF' en schemas.json).")
+    parser.add_argument("--chunk-size", type=int, default=1000, help="Tamaño de lote para upsert (default 1000).")
+    parser.add_argument("--log", help="Ruta de log (opcional, si no se da se crea automatica).")
+    parser.add_argument("--debug", action="store_true", help="Modo diagnostico (mas salida en consola).")
+    args = parser.parse_args()
+
+    entry_name = args.entry.upper()
+
+    # Prints previos para saber rutas críticas
+    print(f"[RUN] BASE_DIR={BASE_DIR}")
+    print(f"[RUN] CONFIG_PATH={CONFIG_PATH}  exists={os.path.exists(CONFIG_PATH)}")
+    print(f"[RUN] SCHEMA_PATH={SCHEMA_PATH}  exists={os.path.exists(SCHEMA_PATH)}")
+    print(f"[RUN] ENTRY={entry_name}  CHUNK={args.chunk_size}")
+
+    # Logger
+    log_path = configurar_logger(entry_name, args.log)
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.debug("[DEBUG] Modo diagnostico activado")
+
+    # Cargar config y schemas
+    config = cargar_json(CONFIG_PATH)
+    schemas = cargar_json(SCHEMA_PATH)
+
+    # Resolver entry
+    entry_cfg, is_txn = resolver_entry(entry_name, schemas)
+    logging.info(f"Entry resuelto: DBF={entry_cfg.get('DBF')}  is_txn={is_txn}")
+
+    # Callback progreso (0..100) con umbral para no spamear
+    last_pct = -1
+    def on_progress(pct: int) -> None:
+        nonlocal last_pct
+        if pct == 100 or pct - last_pct >= 5:
+            last_pct = pct
+            msg = f"Progreso: {pct}%"
+            print("[RUN]", msg)
+            logging.info(msg)
+
+    # Ejecutar ETL
+    try:
+        logging.info("==== INICIO EJECUCION ETL ====")
+        print("[RUN] Ejecutando ETL…")
+        resumen = ejecutar_etl_con_progreso(
+            dbf_name=entry_name,
+            chunk_size=args.chunk_size,
+            progress_callback=on_progress,
         )
-    else:
-        df_to_sync = df.copy()
+        logging.info(resumen)
+        print("[RUN] ETL OK ->", resumen)
+        logging.info("==== ETL FINALIZADO EXITOSAMENTE ====")
+        print(f"[RUN] Log en: {log_path}")
+        sys.exit(0)
 
-    rows_inserted = len(df_to_sync)
+    except SystemExit:
+        raise
+    except Exception as ex:
+        print("[RUN][ERROR]", repr(ex))
+        logging.exception("Error durante la ejecucion del ETL:")
+        print(f"[RUN] Revisa el log: {log_path}")
+        sys.exit(1)
 
-    upsert_dataframe_con_progreso(
-        df_to_sync,
-        cfg["MYSQL_URI"],
-        entry["TARGET"]["TABLE"],
-        key_cols,
-        "row_hash",
-        chunk_size,
-        progress_callback
-    )
 
-    end_time     = time.time()
-    time_elapsed = int(end_time - start_time)
-    proc         = psutil.Process()
-    mem_used_mb  = round(proc.memory_info().rss / (1024**2), 2)
-    sync_time    = datetime.now()
-
-    log_sync_history(
-        cfg["MYSQL_URI"],
-        dbf_name,
-        sync_time,
-        rows_processed,
-        rows_inserted,
-        time_elapsed,
-        chunk_size,
-        mem_used_mb
-    )
-
-    actualizar_fecha(dbf_name, sync_time.isoformat(sep=" ", timespec="seconds"))
-
-    return (
-        f"Procesadas: {rows_processed}, conciliaciones: {rows_inserted}, "
-        f"duración: {time_elapsed}s, chunk: {chunk_size}, memoria: {mem_used_mb:.2f} MB."
-    )
+if __name__ == "__main__":
+    main()

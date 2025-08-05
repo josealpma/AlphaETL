@@ -3,6 +3,9 @@
 import json
 import os
 
+from sqlalchemy import create_engine, text
+from datetime import datetime
+
 CONTROL_FILE = "config/sync_control.json"
 
 def cargar_control():
@@ -18,6 +21,22 @@ def guardar_control(data):
 def obtener_ultima_fecha(nombre_dbf):
     control = cargar_control()
     return control.get(nombre_dbf, {}).get("ultima_fecha", None)
+
+    
+def obtener_ultima_fecha_db(nombre_dbf: str, mysql_uri: str) -> datetime | None:
+    """
+    Devuelve la última fecha de sincronización registrada en tbl_sync_log
+    para el DBF indicado, o None si no hay registros.
+    """
+    engine = create_engine(mysql_uri, connect_args={"charset": "utf8mb4"})
+    sql = text("""
+        SELECT MAX(sync_time) AS ultima_fecha
+          FROM tbl_sync_log
+         WHERE dbf_name = :dbf
+    """)
+    with engine.connect() as conn:
+        result = conn.execute(sql, {"dbf": nombre_dbf}).scalar()
+    return result  # será un objeto datetime o None
 
 def actualizar_fecha(nombre_dbf, nueva_fecha):
     control = cargar_control()

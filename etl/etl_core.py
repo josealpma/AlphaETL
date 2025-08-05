@@ -135,7 +135,7 @@ def log_sync_history(
     dbf_name: str,
     sync_time: datetime,
     rows_processed: int,
-    rows_inserted: int,
+    rows_upserted: int,
     time_elapsed: int,
     chunk_size: int,
     mem_used_mb: float
@@ -143,7 +143,7 @@ def log_sync_history(
     engine = create_engine(mysql_uri, connect_args={"charset": "utf8mb4"})
     stmt = text("""
       INSERT INTO tbl_sync_log
-        (dbf_name, sync_time, rows_processed, rows_inserted,
+        (dbf_name, sync_time, rows_processed, rows_upserted,
          time_elapsed, chunk_size, mem_used_mb)
       VALUES (:dbf, :ts, :rp, :ri, :te, :cs, :mem)
     """)
@@ -152,12 +152,11 @@ def log_sync_history(
             "dbf": dbf_name,
             "ts":  sync_time,
             "rp":  rows_processed,
-            "ri":  rows_inserted,
+            "ri":  rows_upserted,
             "te":  time_elapsed,
             "cs":  chunk_size,
             "mem": mem_used_mb
         })
-
 
 def ejecutar_etl_con_progreso(
     dbf_name: str,
@@ -168,24 +167,20 @@ def ejecutar_etl_con_progreso(
 
     cfg     = cargar_config()
     schemas = cargar_schemas()
-    cats    = schemas["ENTRIES"]["CATALOGS"]
-    txns    = schemas["ENTRIES"]["TRANSACTIONAL"]
-
-    is_txn = any(e["DBF"].lower() == dbf_name.lower() for e in txns)
-    entries = txns if is_txn else cats
+    # Unifica todas las entradas (catálogos + transaccionales)
+    entries = schemas["ENTRIES"].get("CATALOGS", []) + schemas["ENTRIES"].get("TRANSACTIONAL", [])
     entry   = next(e for e in entries if e["DBF"].lower() == dbf_name.lower())
 
-    # Determinar las KEYS: para transaccional viene dentro de TARGET, para catálogos en el nivel superior
-    if is_txn:
-        key_cols = entry["TARGET"]["KEYS"]
-    else:
-        key_cols = entry.get("KEYS", [])
+    # Determina KEY_COLUMNS y HASH_COLUMNS, ya sea al nivel top o dentro de TARGET
+    key_cols  = entry.get("KEYS") or entry["TARGET"].get("KEYS", [])
+    hash_cols = entry.get("HASHES") or entry["TARGET"].get("HASHES", [])
 
     engine     = create_engine(cfg["MYSQL_URI"], connect_args={"charset":"utf8mb4"})
     src_cols   = [c["SOURCE"] for c in entry["TARGET"]["COLUMNS"]]
     df         = dbf_to_dataframe(os.path.join(cfg["DBF_DIR"], f"{dbf_name}.DBF"), src_cols)
     rows_processed = len(df)
 
+    # Renombra columnas según TARGET.COLUMNS
     lower = {c.lower(): c for c in df.columns}
     rename_map = {
         lower[c["SOURCE"].lower()]: c["TARGET"]
@@ -194,20 +189,18 @@ def ejecutar_etl_con_progreso(
     }
     df = df.rename(columns=rename_map)
 
-    if is_txn:
-        hash_field = "row_hash"
-        hash_cols  = entry["TARGET"]["HASHES"]
-        df_to_sync = filter_new_or_changed(
-            df, engine,
-            entry["TARGET"]["TABLE"],
-            key_cols,
-            hash_field,
-            hash_cols
-        )
-    else:
-        df_to_sync = df.copy()
+    # Siempre calculamos y filtramos por row_hash
+    df["row_hash"] = [calcular_hash_fila(r, hash_cols) for r in df.to_dict("records")]
+    df = df.drop_duplicates(subset=key_cols, keep="first")
+    df_to_sync = filter_new_or_changed(
+        df, engine,
+        entry["TARGET"]["TABLE"],
+        key_cols,
+        "row_hash",
+        hash_cols
+    )
 
-    rows_inserted = len(df_to_sync)
+    rows_upserted = len(df_to_sync)
 
     upsert_dataframe_con_progreso(
         df_to_sync,
@@ -219,6 +212,7 @@ def ejecutar_etl_con_progreso(
         progress_callback
     )
 
+    # Log y actualización de fecha
     end_time     = time.time()
     time_elapsed = int(end_time - start_time)
     proc         = psutil.Process()
@@ -230,7 +224,7 @@ def ejecutar_etl_con_progreso(
         dbf_name,
         sync_time,
         rows_processed,
-        rows_inserted,
+        rows_upserted,
         time_elapsed,
         chunk_size,
         mem_used_mb
@@ -239,6 +233,6 @@ def ejecutar_etl_con_progreso(
     actualizar_fecha(dbf_name, sync_time.isoformat(sep=" ", timespec="seconds"))
 
     return (
-        f"Procesadas: {rows_processed}, conciliaciones: {rows_inserted}, "
-        f"duración: {time_elapsed}s, chunk: {chunk_size}, memoria: {mem_used_mb:.2f} MB."
+        f"Procesadas: {rows_processed}, conciliaciones: {rows_upserted}, "
+        f"duración: {time_elapsed}s, memoria: {mem_used_mb:.2f} MB."
     )

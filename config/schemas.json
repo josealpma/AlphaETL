@@ -1,48 +1,50 @@
 {
     "ENTRIES": {
-        "CATALOGS": [
+         "CATALOGS": [
             {
-                "DBF": "AGENTES", 
+                "DBF": "AGENTES",
                 "TARGET": {
                     "TABLE": "cat_kam",
                     "COLUMNS": [
-                        { "SOURCE": "cve_age", "TARGET": "int_cve_age" },
-                        { "SOURCE": "nom_age", "TARGET": "txt_nom_age"  }
+                        { "SOURCE": "cve_age", "TARGET": "cve_age" },
+                        { "SOURCE": "nom_age", "TARGET": "nom_age" }
                     ]
                 },
-                "KEYS": ["int_cve_age"],
-                "HASHES": []
-                
+                "KEYS": ["cve_age"],
+                "HASHES": ["cve_age", "nom_age"]
             },
             {
-                "DBF": "PRODUCTO", 
+                "DBF": "PRODUCTO",
                 "TARGET": {
                     "TABLE": "cat_productos",
                     "COLUMNS": [
-                        { "SOURCE": "dato_1", "TARGET": "txt_cod_barras" },
-                        { "SOURCE": "desc_prod", "TARGET": "txt_des_pro" },
-                        { "SOURCE": "cse_prod", "TARGET": "txt_cse_pro" },
-                        { "SOURCE": "cve_prod", "TARGET": "txt_cve_pro" }
-
+                        { "SOURCE": "cse_prod",   "TARGET": "cse_prod"   },
+                        { "SOURCE": "cve_prod",   "TARGET": "cve_prod"   },
+                        { "SOURCE": "nom_prod",   "TARGET": "nom_prod"   },
+                        { "SOURCE": "desc_prod",  "TARGET": "desc_prod"  },
+                        { "SOURCE": "uni_med",    "TARGET": "uni_med"    },
+                        { "SOURCE": "dato_1",     "TARGET": "dato_1"     },
+                        { "SOURCE": "dato_2",     "TARGET": "dato_2"     },
+                        { "SOURCE": "dato_3",     "TARGET": "dato_3"     },
+                        { "SOURCE": "dato_4",     "TARGET": "dato_4"     }
                     ]
                 },
-                "KEYS": ["txt_cve_pro"],
-                "HASHES": []
-                
+                "KEYS": ["cve_prod"],
+                "HASHES": ["cse_prod","cve_prod","nom_prod","desc_prod", "uni_med","dato_1","dato_2","dato_3","dato_4"]
             },
             {
-                "DBF": "CLIENTES", 
+                "DBF": "CLIENTES",
                 "TARGET": {
                     "TABLE": "cat_clientes",
                     "COLUMNS": [
-                        { "SOURCE": "cve_cte", "TARGET": "int_cve_cte" },
-                        { "SOURCE": "nom_cte", "TARGET": "txt_nom_cte" },
-                        { "SOURCE": "cve_can", "TARGET": "int_cve_can" },
-                        { "SOURCE": "cve_age", "TARGET": "int_cve_age"  }
+                        { "SOURCE": "cve_cte",  "TARGET": "cve_cte"  },
+                        { "SOURCE": "nom_cte",  "TARGET": "nom_cte"  },
+                        { "SOURCE": "cve_can",  "TARGET": "cve_can"  },
+                        { "SOURCE": "cve_age",  "TARGET": "cve_age"  }
                     ]
                 },
-                "KEYS": ["int_cve_cte"],
-                "HASHES": []
+                "KEYS": ["cve_cte"],
+                "HASHES": ["cve_cte","nom_cte","cve_can","cve_age"]
             }
         ],
         "TRANSACTIONAL": [

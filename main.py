@@ -9,10 +9,11 @@ from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 
 from etl.etl_core import cargar_config, cargar_schemas, ejecutar_etl_con_progreso
-from etl.control   import obtener_ultima_fecha, actualizar_fecha
+from etl.control   import obtener_ultima_fecha_db, actualizar_fecha
 from gui.config_dialog import ConfigDialog
 
 from gui.history_dialog import HistoryDialog
+
 
 if getattr(sys, "frozen", False):
     BASE_DIR = sys._MEIPASS
@@ -93,8 +94,13 @@ class MainWindow(QtWidgets.QMainWindow):
         dlg.exec_()
 
     def refresh_last_sync_catalogs(self, dbf_name: str):
-        fecha = obtener_ultima_fecha(dbf_name)
-        self.lblCatalogLastSync_Data.setText(fecha or "Nunca")
+        cfg = cargar_config()
+        fecha = obtener_ultima_fecha_db(dbf_name, cfg["MYSQL_URI"])
+        if isinstance(fecha, datetime):
+            texto = fecha.isoformat(sep=" ", timespec="seconds")
+        else:
+            texto = "Nunca"
+        self.lblCatalogLastSync_Data.setText(texto)
 
     def on_run_catalogs(self):
         dbf   = self.cmbCatalogDbf.currentText()
@@ -128,8 +134,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btnCatalogRun.setEnabled(True)
 
     def refresh_last_sync_transactions(self, dbf_name: str):
-        fecha = obtener_ultima_fecha(dbf_name)
-        self.lblTxnLastSync_Data.setText(fecha or "Nunca")
+        cfg = cargar_config()
+        fecha = obtener_ultima_fecha_db(dbf_name, cfg["MYSQL_URI"])
+        if isinstance(fecha, datetime):
+            texto = fecha.isoformat(sep=" ", timespec="seconds")
+        else:
+            texto = "Nunca"
+        self.lblTxnLastSync_Data.setText(texto)
 
     def on_run_transactionals(self):
         dbf   = self.cmbTxnDbf.currentText()

@@ -8,5 +8,6 @@
         "PASSWORD": "root",
         "DATABASE": "z_IDN"
     },
-    "MYSQL_URI": "mysql+pymysql://root:root@localhost:3306/z_IDN"
+    "MYSQL_URI": "mysql+pymysql://root:root@localhost:3306/z_IDN",
+    "ENTRIES": {}
 }

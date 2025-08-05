@@ -63,9 +63,9 @@
      <widget class="QPushButton" name="btnCatalogConfig">
       <property name="geometry">
        <rect>
-        <x>280</x>
+        <x>270</x>
         <y>10</y>
-        <width>91</width>
+        <width>101</width>
         <height>28</height>
        </rect>
       </property>
@@ -91,7 +91,7 @@
        <rect>
         <x>10</x>
         <y>60</y>
-        <width>111</width>
+        <width>191</width>
         <height>20</height>
        </rect>
       </property>
@@ -178,9 +178,9 @@
      <widget class="QPushButton" name="btnTxnConfig">
       <property name="geometry">
        <rect>
-        <x>280</x>
+        <x>270</x>
         <y>10</y>
-        <width>91</width>
+        <width>101</width>
         <height>28</height>
        </rect>
       </property>
