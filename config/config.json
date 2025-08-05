@@ -1,6 +1,6 @@
 {
     "DBF_DIR": "C:\\Alpha\\DBF",
-    "CHUNK_SIZE": 10000,
+    "CHUNK_SIZE": 5000,
     "MYSQL": {
         "HOST": "localhost",
         "PORT": 3306,
@@ -8,6 +8,5 @@
         "PASSWORD": "root",
         "DATABASE": "z_IDN"
     },
-    "MYSQL_URI": "mysql+pymysql://root:root@localhost:3306/z_IDN",
-    "ENTRIES": {}
+    "MYSQL_URI": "mysql+pymysql://root:root@localhost:3306/z_IDN"
 }
