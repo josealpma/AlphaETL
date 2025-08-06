@@ -1,9 +1,9 @@
 {
     "AGENTES": {
-        "ultima_fecha": "2025-08-05 15:31:10"
+        "ultima_fecha": "2025-08-05 17:35:25"
     },
     "CLIENTES": {
-        "ultima_fecha": "2025-08-05 15:31:20"
+        "ultima_fecha": "2025-08-05 17:35:32"
     },
     "FACTURAC": {
         "ultima_fecha": "2025-07-31 18:17:00"
@@ -15,6 +15,6 @@
         "ultima_fecha": "2025-07-31 18:17:50"
     },
     "PRODUCTO": {
-        "ultima_fecha": "2025-08-05 15:32:15"
+        "ultima_fecha": "2025-08-05 17:35:29"
     }
 }
