@@ -1,5 +1,5 @@
 @echo off
-REM Activar entorno virtual y correr GUI
+REM Activar entorno virtual
 
 echo Iniciando entorno virtual...
 call venv\Scripts\activate.bat

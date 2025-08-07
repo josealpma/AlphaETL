@@ -234,5 +234,5 @@ def ejecutar_etl_con_progreso(
 
     return (
         f"Procesadas: {rows_processed}, conciliaciones: {rows_upserted}, "
-        f"duración: {time_elapsed}s, memoria: {mem_used_mb:.2f} MB."
+        f"duración: {time_elapsed}s."
     )
