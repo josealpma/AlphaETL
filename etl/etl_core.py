@@ -10,7 +10,7 @@ from typing import Callable, List, Tuple
 import psutil
 import pandas as pd
 from dbfread import DBF
-from sqlalchemy import create_engine, MetaData, Table, select, text
+from sqlalchemy import create_engine, MetaData, Table, select, text, bindparam
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 
 from etl.control import actualizar_fecha

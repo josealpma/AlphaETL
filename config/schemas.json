@@ -135,7 +135,77 @@
                     "KEYS": ["no_fac", "cve_prod", "part_fac"],
                     "HASHES": ["no_fac", "cse_prod", "cve_prod", "cant_surt", "part_fac"]
                 }
+            },
+            {
+                "DBF": "MOVS",
+                "TARGET": {
+                    "TABLE": "tbl_movs",
+                    "COLUMNS": [
+                    { "SOURCE": "NO_MOV",   "TARGET": "NO_MOV" },
+                    { "SOURCE": "F_MOV",    "TARGET": "F_MOV" },
+                    { "SOURCE": "CVE_PROD", "TARGET": "CVE_PROD" },
+                    { "SOURCE": "REF_MOV",  "TARGET": "REF_MOV" },
+                    { "SOURCE": "NO_REF",   "TARGET": "NO_REF" },
+                    { "SOURCE": "CANT_PROD","TARGET": "CANT_PROD" },
+                    { "SOURCE": "COSTO_ENT","TARGET": "COSTO_ENT" },
+                    { "SOURCE": "CTO_PROD", "TARGET": "CTO_PROD" },
+                    { "SOURCE": "PRECI_PROD","TARGET": "PRECI_PROD" },
+                    { "SOURCE": "TIPO_MOV", "TARGET": "TIPO_MOV" },
+                    { "SOURCE": "MED_PROD", "TARGET": "MED_PROD" },
+                    { "SOURCE": "ORIG_MOV", "TARGET": "ORIG_MOV" },
+                    { "SOURCE": "DEST_MOV", "TARGET": "DEST_MOV" },
+                    { "SOURCE": "CVE_PROV", "TARGET": "CVE_PROV" },
+                    { "SOURCE": "CVE_AGE",  "TARGET": "CVE_AGE" },
+                    { "SOURCE": "CVE_CTE",  "TARGET": "CVE_CTE" },
+                    { "SOURCE": "LUGAR",    "TARGET": "LUGAR" },
+                    { "SOURCE": "CVE_MOV",  "TARGET": "CVE_MOV" },
+                    { "SOURCE": "HORA_MOV", "TARGET": "HORA_MOV" },
+                    { "SOURCE": "USUARIO",  "TARGET": "USUARIO" },
+                    { "SOURCE": "CVE_MON",  "TARGET": "CVE_MON" },
+                    { "SOURCE": "TIP_CAM",  "TARGET": "TIP_CAM" },
+                    { "SOURCE": "CVE_SUC",  "TARGET": "CVE_SUC" },
+                    { "SOURCE": "MES",      "TARGET": "MES" },
+                    { "SOURCE": "AÑO",      "TARGET": "AÑO" },
+                    { "SOURCE": "TRANS",    "TARGET": "TRANS" },
+                    { "SOURCE": "LOTE",     "TARGET": "LOTE" },
+                    { "SOURCE": "USAALM",   "TARGET": "USAALM" },
+                    { "SOURCE": "CIERRE",   "TARGET": "CIERRE" },
+                    { "SOURCE": "CVE_CEN",  "TARGET": "CVE_CEN" },
+                    { "SOURCE": "PRIORIDAD","TARGET": "PRIORIDAD" },
+                    { "SOURCE": "NO_PEDC",  "TARGET": "NO_PEDC" },
+                    { "SOURCE": "SUC_ENT",  "TARGET": "SUC_ENT" },
+                    { "SOURCE": "NO_REQ",   "TARGET": "NO_REQ" },
+                    { "SOURCE": "FALTA_FAC","TARGET": "FALTA_FAC" },
+                    { "SOURCE": "FORPARIC", "TARGET": "FORPARIC" },
+                    { "SOURCE": "FECH_LOTE","TARGET": "FECH_LOTE" },
+                    { "SOURCE": "FOLIO_SRV","TARGET": "FOLIO_SRV" },
+                    { "SOURCE": "SUC_SRV",  "TARGET": "SUC_SRV" }
+                    ]
+                },
+                "KEYS": ["NO_MOV"],
+                "HASHES": [
+                    "F_MOV",
+                    "CVE_PROD",
+                    "NO_REF",
+                    "CANT_PROD",
+                    "CTO_PROD",
+                    "PRECI_PROD",
+                    "TIPO_MOV",
+                    "ORIG_MOV",
+                    "DEST_MOV",
+                    "CVE_SUC",
+                    "MES",
+                    "AÑO",
+                    "LOTE",
+                    "CVE_MOV",
+                    "TIP_CAM",
+                    "FECH_LOTE",
+                    "HORA_MOV",
+                    "SUC_ENT"
+                ]
+
             }
+
         ]
     }
 }

@@ -1,13 +1,13 @@
 {
-    "DBF_DIR": "C:\\AlphaDB\\",
+    "DBF_DIR": "C:\\Alpha\\DBF",
     "CHUNK_SIZE": 10000,
     "MYSQL": {
-        "HOST": "localhost",
-        "PORT": 3306,
-        "USER": "root",
-        "PASSWORD": "root",
+        "HOST": "walfortint.ddns.net",
+        "PORT": 6603,
+        "USER": "WConsultor",
+        "PASSWORD": "WC0n5u1t0r2025",
         "DATABASE": "z_IDN"
     },
-    "MYSQL_URI": "mysql+pymysql://root:root@localhost:3306/z_IDN",
+    "MYSQL_URI": "mysql+pymysql://WConsultor:WC0n5u1t0r2025@walfortint.ddns.net:6603/z_IDN",
     "ENTRIES": {}
 }

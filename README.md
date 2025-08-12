@@ -11,8 +11,11 @@ Este proyecto facilita la sincronización de datos desde archivos DBF (procedent
 ├── etl/
 │   ├── etl_core.py       # Lógica central del ETL
 │   └── control.py        # Funciones auxiliares (e.g. actualizar fecha de última sincronización)
-├── gui/                  # Interfaz gráfica con PyQt5 
+├── gui/                  # Interfaz gráfica con PyQt5 (modulos de codigo)
+├── ui/                   # Interfaz grafica creada con QtDesigner
 ├── main.py               # Punto de arranque: selecciona DBF y lanza el ETL en hilo
+├── init.bat              # Batch de ejecución, inicia el entorno virtual (python) y ejecuta main.py
+├── run.py              # Extiende una interfaz de linea de comandos (CLI) que permite ejecutar los mismos procesos pero de manera automatica
 └── requirements.txt      # Dependencias de Python
 ```
 
@@ -38,7 +41,20 @@ Este proyecto facilita la sincronización de datos desde archivos DBF (procedent
    ```jsonc
    {
      "ENTRIES": {
-       "CATALOGS": [ … ],
+       "CATALOGS": [ 
+          {
+            "DBF": "AGENTES",
+            "TARGET": {
+                "TABLE": "cat_kam",
+                "COLUMNS": [
+                    { "SOURCE": "cve_age", "TARGET": "cve_age" },
+                    { "SOURCE": "nom_age", "TARGET": "nom_age" }
+                ]
+            },
+            "KEYS": ["cve_age"],
+            "HASHES": ["cve_age", "nom_age"]
+          }
+       ],
        "TRANSACTIONAL": [
          {
            "DBF": "FACTURAC",
@@ -46,7 +62,7 @@ Este proyecto facilita la sincronización de datos desde archivos DBF (procedent
              "TABLE": "tbl_facturas",
              "COLUMNS": [
                { "SOURCE": "no_fac", "TARGET": "no_fac" },
-               …
+               
              ],
              "KEYS": ["no_fac","ped_int"],
              "HASHES": [
@@ -83,27 +99,45 @@ Este proyecto facilita la sincronización de datos desde archivos DBF (procedent
 - **Trazabilidad**: bitácora detallada de cada ejecución.  
 - **Extensibilidad**: añadir nuevos DBF es tan sencillo como actualizar `schemas.json`.
 
-## Uso
+## Uso 
+
+Primero necesita iniciar un entorno virtual para ejecutar instalar dependencias de forma controlada. Para crear el entorno virtual va a necesitar ejecutar el siguiente comando:
+
+```bash
+python -m venv venv
+```
+
+Una vez creado el entorno virtual, se creará una carpeta llamada venv. Para inicializar el entorno virutal ejecutar el siguiente comando en CMD:
+
+```bash
+venv\Scripts\activate.bat
+```
+
+Cuando el venv esté activo se requiere que instale todas las dependencias del proyecto mediante el siguiente comando:
+
+
+```bash
+pip install -r requirements.txt
+```
+
+Cuando la instalacion de las dependencias de requirements se complete ahora podra iniciar el GUI con el siguiente comando: 
 
 ```bash
 python main.py
 ```
 
-O integrar `ejecutar_etl_con_progreso` en un cron o tarea programada.
+## CLI
 
-## Distribucion
-
-En linea de comandos, ubicar en la raiz del proyecto una linea de comandos y ejecutar la siguiente sentencia:
+Para hacer uso de la interfaz de linea de comandos bastará ubicarse en el root del proyecto, con ejecutar un comando con la siguiente estructura:
 
 ```bash
-pyinstaller ^
-  --onefile ^
-  --name AlphaETL ^
-  --add-data "config\config.json;config" ^
-  --add-data "config\schemas.json;config" ^
-  --add-data "ui;ui" ^
-  --add-data "gui;gui" ^
-  main.py
-  ```
+python run.py --entry <schema>
+```
 
-Esto generará un ejecutable `AlphaETL.exe` en la carpeta `dist/`.
+Por ejemplo, para ejecutar los procesos ETL del esquema FACTURAD, el comando a ejecutar será: 
+
+```bash
+python run.py --entry FACTURAD
+```
+
+La interfaz de linea de comandos ejecutará el etl_core.py de la misma forma que lo hace el main.py (GUI).
